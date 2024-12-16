@@ -1,0 +1,44 @@
+\section*{Introduction}
+\setcounter{section}{1}
+
+\emph{Memory model} is an abstraction, invented to describe the behavior of a program in a multithreaded environment. A memory model describes the behavior of a concurrent program on a particular system. A memory model dictates how memory operations interact with each other. 
+
+A well-established approach to define a memory model is to use declarative semantics, where a program execution is depicted as a graph, where nodes represent memory operations and edges denote the order on these operations. Some examples of binary relations between instructions are \emph{Program Order}, which sequantially binds events in one thread, and \emph{reads-from}, which relates writes to reads, reading from them. 
+
+The most traditional and conservative memory model is \emph{Sequential Consistency} (SC)~\cite{lamport_tc79}. A nice way to think about SC is as a switch. At each time step, the switch selects a thread to run, and runs its next event completely.
+\begin{aquote}{Leslie Lamport (1979)}
+    \textit{``The result of any execution is the same as if the
+    operations of all the processors were executed in
+    some sequential order, and the operations of each
+    processor appear in the order specified by its
+    program.''}
+\end{aquote}
+
+However, SC fails to describe the real-world concurrent systems due to compiler and CPU optimizations. We can only run a single instruction at a time, so we lose the benefit of running a program on multiple threads. Due to that, models that are more complex, but yield better performance, are developed and used in practice. Memory models that are more relaxed than Sequential Consistency are called \emph{weak memory models}. While weak memory models give compilers and processors more flexibility to optimize, they introduce more problems to the programmer. 
+
+% TODO: Хочется аксиоматическое определение SC и пример доказательства простого факта о SС с использованием отношений
+
+If we reason about weak memory models in a declarative way, we use relations to describe models and facts about them~\cite{Alglave-al:TOPLAS14}. As memory models are stated with relational expressions, proofs of various model properties are also done reasoning in relational language. Proofs of such propositions are typically massive and very error-prone. There were several cases of incorrect results in submitted and published papers. Batty et al.~\cite{batty_2016}\ suggested an incorrect fix for the semantics of SC calls in C++, which was later documented by Lahav et al.~\cite{lahav2017repairing}. Moreover Pichon-Pharabod et al.\  in 2016 suggested an incorrect proof of compilation in their paper~\cite{PichonPharabod_Sewell16}. 
+
+Given that writing and maintaining proofs about Weak Memory on paper is very difficult, it is considered good practice to write them in Coq~\cite{bertot2013interactive}, which is a proof assistant system. Coq helps to grant the correctness of the proof process. In Coq, proofs are expressed as formal mathematical objects, and the correctness of the proof is ensured by checking that the proof is consistent with the axioms and rules of logic. Coq is a tool that facilitates the creation of mechanically-verifiable proofs, in contrast to paper-based proofs which are prone to errors.
+
+Weak memory proofs, even with the use of Coq, tend to be huge and convoluted. This is why in this thesis, we are focusing on automating a specific part of weak memory proofs, namely the proofs of equivalences between several memory models. As already mentioned, we can define memory models as axioms over relational language. Consider an example of a proposition about relations. Let us denote \texttt{r, r'} $\subset$ \texttt{A} $\times$ \texttt{A} --- two relations over a given set \texttt{A}. Now we may consider common operations in relational language, e.g.\ transitive closure (\texttt{r*}), reflexive closure (\texttt{r?}), or composition (\texttt{r {;;} r'}). An example of a proposition we want to prove may look like this: 
+\begin{center}
+    \texttt{(r* {;;} r?) {;;} r? $\equiv$ r*}
+\end{center}
+If we were to prove this statement in Coq by hand, we would have to consequently apply multiple theorems to rewrite both sides of the equivalence relation until they are syntactically equal. In this particular example, we would have to apply the theorem \texttt{rt\_cr} twice: 
+\begin{center}
+    \texttt{rt\_cr {:} forall (A {:} Type) (r {:} relation A), r* {;;} r? = r*}
+\end{center}
+After \texttt{rt\_cr} is applied to the left-hand side (lhs) two times, the two sides become syntactically equal. \texttt{rt\_cr} and other theorems that help to reason about relations are provided by the Hahn library~\cite{hahn_lib}. 
+
+The general problem discussed in this thesis is as follows: given a rewriting system, i.e.\ a set of theorems, and an equivalence relation between two expressions, we want to find a sequence of rewrites that can be applied to both sides of the relation to make them syntactically equal. This is a wider problem than reasoning about relational expressions, thereafter the solution we propose could be adapted and used to solve other problems that involve derivability in two-sided associative calculus over a given language in Coq. This thesis, in turn, focuses on applying the proposed technique to automate weak memory, where the rewriting system we use is the Hahn library. 
+
+As a basis for various proofs in the area of weak memory, the weakmemory\footnote{\href{https://github.com/weakmemory}{https://github.com/weakmemory}} organization on GitHub, specifically the imm\footnote{\href{https://github.com/weakmemory/imm}{https://github.com/weakmemory/imm}} repository, was utilized. The work on the thesis involves analyzing present proofs and their possible patterns to automate the process and attempt to shorten them using the developed tool.
+
+\subsection{Approach}
+Our approach to solving equivalences is based on the technique called \textit{equality saturation} which utilizes the data structure, called an \textit{e-graph}. E-graph stores an equivalence relation over terms of some language and allows to store potentially exponential amount of terms in a compact way. E-graph is a set of equivalence classes (\textit{e-classes}) and e-class is a set of \textit{e-nodes}, which represent equivalent terms in the language. Whilst e-nodes are function symbols, associated with a list of e-classes. 
+
+Equality saturation is a process of iteratively applying a set of rewrite rules to the e-graph until rewrites bring no more new information to the graph. That point is called \emph{saturation}. The saturated e-graph represents a set of all possible terms  equivalent to the origin, that can be obtained by applying the rewrite rules to the initial term.
+
+In a saturated e-graph it becomes algorithmically easy to check if two terms are equivalent and, moreover, to find a proof of their equivalence. Having a sequence of rewrites, we can apply them within the Coq proof view. Just as we would do by hand, applying the theorems one by one.

@@ -1,0 +1,30 @@
+%!TEX program = lualatex
+\documentclass[14pt]{constructor-diploma}
+
+\usepackage[backend=bibtex]{biblatex}
+\addbibresource{diploma.bib}
+
+\begin{document}
+\filltitle{en}{
+    chair              = {Master of Science \\ Computer Science},
+    title              = {CoqPilot: LLM-based generation of Coq proofs},
+    author             = {Andrei Kozyrev},
+    supervisorPosition = {professor},
+    supervisor         = {Anton Podkopaev},
+    reviewerPosition   = {},
+    reviewer           = {},
+    chairHeadPosition  = {professor},
+    chairHead          = {},
+}
+\maketitle
+
+% \include{chapters/declaration_of_consent}
+\include{chapters/abstract}
+% \emptypage{}
+\tableofcontents
+
+\include{chapters/1-introduction}
+
+\setmonofont[Mapping=tex-text]{CMU Typewriter Text}
+\printbibliography{}
+\end{document}
